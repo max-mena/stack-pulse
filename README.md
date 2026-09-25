@@ -17,7 +17,7 @@ The data engineering ecosystem evolves fast. This project treats tooling trends 
                        ▼
 ┌─────────────────────────────────────────────────────┐
 │               Ingestion (Python)                     │
-│         httpx · Pydantic · python-dotenv            │
+│         httpx · Pydantic · pydantic-settings          │
 └──────────────────────┬──────────────────────────────┘
                        │
                        ▼
@@ -90,13 +90,14 @@ stack-pulse/
 ├── .github/workflows/      # CI/CD — dbt test on PR
 ├── docker-compose.yml      # Airflow local setup
 ├── .env.example
-└── requirements.txt
+├── pyproject.toml          # uv-managed dependencies
+└── uv.lock
 ```
 
 ## Roadmap
 
 ### Phase 1 — Foundation (current)
-- [ ] Project structure and repository setup
+- [x] Project structure and repository setup
 - [ ] GitHub API client with Pydantic validation
 - [ ] BigQuery raw dataset and loading script
 - [ ] Initial dbt staging models + basic tests
@@ -119,14 +120,28 @@ stack-pulse/
 
 ## Setup
 
-> Full setup guide coming in Phase 1.
+**Requirements:** [uv](https://docs.astral.sh/uv/) (installs Python 3.12 for you), [Google Cloud CLI](https://cloud.google.com/sdk/docs/install), Docker + Docker Compose (for Airflow, Phase 2), a Google Cloud project with billing linked (usage stays within the free tier), a GitHub fine-grained token (public repos, read-only), and a [Stack Exchange app key](https://stackapps.com/apps/oauth/register).
 
-Requirements:
-- Python 3.12+
-- Docker + Docker Compose (for Airflow)
-- Google Cloud account (BigQuery free tier)
-- GitHub personal access token
-- Stack Overflow API key (free)
+```bash
+# 1. Dependencies and git hooks
+uv sync
+uv run pre-commit install
+
+# 2. Secrets: fill in the blanks (the file is gitignored)
+cp .env.example .env
+
+# 3. Google Cloud auth. Uses your own account locally, no key files
+gcloud auth login
+gcloud auth application-default login
+
+# 4. Create the BigQuery dataset, service account and GitHub Actions identity (idempotent)
+GCP_PROJECT_ID=<your-project> ./scripts/bootstrap_gcp.sh
+
+# 5. Check everything is reachable
+uv run python scripts/verify_setup.py
+```
+
+CI authenticates to BigQuery through **Workload Identity Federation**, with no long-lived keys. Step 4 prints the three `gh variable set` commands to run.
 
 ## License
 
